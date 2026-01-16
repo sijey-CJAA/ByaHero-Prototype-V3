@@ -1,0 +1,21 @@
+# SQLite Database
+data/db.sqlite
+data/db.sqlite-journal
+
+# PHP
+vendor/
+composer.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
