@@ -1,213 +1,182 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>ByaHero - Conductor Dashboard</title>
 
+  <!-- Bootstrap CSS (mobile-first) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
   <!-- Leaflet CSS for the mini map -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
-    /* same styling as before (kept compact here) */
-    *{box-sizing:border-box}
-    body{font-family:Segoe UI, Tahoma, Geneva, Verdana, sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:2rem}
-    .container{max-width:760px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.2);overflow:hidden}
-    .header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:1.5rem 2rem;display:flex;gap:1rem;align-items:center}
-    .content{padding:1.5rem 2rem}
-    .form-row{display:flex;gap:1rem;flex-wrap:wrap}
-    .form-group{flex:1;min-width:220px;margin-bottom:1rem}
-    label{display:block;font-weight:600;margin-bottom:.35rem}
-    input,select{width:100%;padding:.6rem;border:2px solid #e5e7eb;border-radius:6px}
-    .button-group{display:flex;gap:1rem;margin-top:.75rem}
-    .btn{padding:.6rem 1rem;border-radius:6px;border:0;font-weight:600;cursor:pointer}
-    .btn-primary{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff}
-    .btn-danger{background:#ef4444;color:#fff}
-    .status-indicator{padding:.8rem;border-radius:6px;margin-bottom:1rem}
-    .status-inactive{background:#fef3c7;color:#92400e;border-left:4px solid #f59e0b}
-    .status-active{background:#d1fae5;color:#065f46;border-left:4px solid #10b981}
-    .info-box{background:#f3f4f6;padding:1rem;border-radius:6px;margin-top:1rem}
-    .info-item{display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid #e5e7eb}
-    #trackingSection{display:none}
-    .alert{padding:.8rem;border-radius:6px;margin-bottom:1rem}
+    :root { --navbar-h:56px; }
 
-    /* Mini map styles */
-    #miniMapWrap { margin-top:0.75rem; border:1px solid #e5e7eb; border-radius:6px; overflow:hidden; }
+    html, body { height:100%; margin:0; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg,#eef2ff 0%,#f3f7ff 100%); }
+
+    .page-wrapper { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1rem; box-sizing:border-box; }
+    .dashboard-card { width:100%; max-width:880px; border-radius:12px; overflow:hidden; box-shadow:0 10px 30px rgba(2,6,23,0.12); background:#fff; }
+
+    .dashboard-header { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:#fff; padding:1.25rem 1.5rem; display:flex; gap:1rem; align-items:center; }
+    .dashboard-header h1 { margin:0; font-size:1.15rem; font-weight:700; }
+    .dashboard-header p { margin:0; opacity:0.92; font-size:.9rem; }
+
+    .card-body { padding:1rem 1.25rem; }
+
+    .form-row { display:flex; flex-wrap:wrap; gap:.75rem; margin-bottom:.75rem; }
+    .form-group { flex:1 1 220px; min-width:180px; }
+
+    label { font-weight:600; font-size:.95rem; margin-bottom:.25rem; display:block; }
+
+    /* Status indicators */
+    .status-indicator { padding:.7rem 0.9rem; border-radius:8px; margin-bottom:.75rem; font-weight:600; display:flex; align-items:center; gap:.5rem; }
+    .status-inactive { background:#fff7ed; color:#92400e; border-left:4px solid #fb923c; }
+    .status-active { background:#ecfdf5; color:#065f46; border-left:4px solid #10b981; }
+
+    .info-box { background:#f8fafc; padding:.9rem; border-radius:8px; margin-top:.75rem; }
+    .info-item { display:flex; justify-content:space-between; padding:.45rem 0; border-bottom:1px solid #eef2f6; font-size:.95rem; }
+    .info-item:last-child { border-bottom:0; }
+
+    /* Mini map */
+    #miniMapWrap { margin-top:.75rem; border-radius:8px; overflow:hidden; border:1px solid #e6eefc; }
     #miniMap { width:100%; height:240px; display:block; }
+    @media (max-width:560px) { #miniMap { height:200px; } }
 
-    @media (max-width:560px) {
-      #miniMap { height:200px; }
-    }
+    /* Seats control */
+    .seat-control { display:flex; gap:.5rem; align-items:center; justify-content:center; max-width:260px; }
+    .seat-btn { width:44px; height:44px; border-radius:8px; border:0; background:#f3f4f6; font-weight:700; font-size:1.1rem; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
+    .seat-count { min-width:64px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:8px; background:#fff; border:1px solid #e8eefc; font-weight:700; font-size:1.05rem; }
 
-    /* Seats control: plus/minus with centered number */
-    .seat-control {
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:.5rem;
-      width:100%;
-      max-width:220px;
-      margin-top:.25rem;
-    }
-    .seat-btn {
-      width:42px;
-      height:42px;
-      border-radius:8px;
-      border:0;
-      background:#f3f4f6;
-      font-weight:700;
-      cursor:pointer;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      font-size:1.15rem;
-      color:#111;
-      box-shadow:0 1px 0 rgba(0,0,0,0.03);
-    }
-    .seat-count {
-      min-width:56px;
-      height:42px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      border-radius:8px;
-      background:#fff;
-      border:2px solid #e5e7eb;
-      font-weight:700;
-      font-size:1.05rem;
-    }
-    .seat-label { display:block; margin-top:.35rem; color:#6b7280; font-size:.85rem; }
+    .routes-list { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.4rem; }
+    .route-pill { padding:.35rem .6rem; border-radius:999px; background:#f3f4f6; border:1px solid #eef2ff; cursor:pointer; font-weight:600; font-size:.9rem; }
+    .route-pill.active { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border-color:transparent; }
 
-    /* small helper for visually-hidden input (keeps compatibility) */
     .visually-hidden { position:absolute !important; height:1px; width:1px; overflow:hidden; clip:rect(1px,1px,1px,1px); white-space:nowrap; }
 
-    /* Fixed-routes pill list */
-    .routes-list { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.5rem; }
-    .route-pill {
-      padding:.35rem .6rem;
-      border-radius:999px;
-      background:#f3f4f6;
-      border:1px solid #e5e7eb;
-      cursor:pointer;
-      font-weight:600;
-      color:#111;
-      font-size:.9rem;
-    }
-    .route-pill.active { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border-color:transparent; }
+    .btn-space { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; }
+
+    /* small helper for alerts */
+    .alert-placeholder { min-height:2rem; margin-bottom:.5rem; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div style="font-size:1.6rem">🚌</div>
-      <div>
-        <h1>Conductor Dashboard</h1>
-        <p>Manage your bus and share location with passengers</p>
-      </div>
-    </div>
+  <div class="page-wrapper">
+    <article class="dashboard-card" role="application" aria-labelledby="pageTitle">
+      <header class="dashboard-header">
+        <div style="font-size:1.6rem">🚌</div>
+        <div>
+          <h1 id="pageTitle">Conductor Dashboard</h1>
+          <p>Manage your bus and share location with passengers</p>
+        </div>
+      </header>
 
-    <div class="content">
-      <div id="alertBox"></div>
+      <div class="card-body">
+        <div class="alert-placeholder" id="alertBox" aria-live="polite"></div>
 
-      <div id="setupSection">
-        <div class="status-indicator status-inactive">⚠️ Please select your bus and configure route to start tracking</div>
+        <!-- Setup -->
+        <section id="setupSection" aria-labelledby="setupTitle">
+          <div class="status-indicator status-inactive" id="setupStatus">⚠️ Please select your bus and configure route to start tracking</div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="busSelect">Select Your Bus</label>
-            <select id="busSelect">
-              <option value="">-- Select Bus --</option>
-            </select>
-          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="busSelect">Select Your Bus</label>
+              <select id="busSelect" class="form-select" aria-label="Select bus">
+                <option value="">-- Select Bus --</option>
+              </select>
+            </div>
 
-          <div class="form-group">
-            <label for="routeInput">Route Name</label>
-            <!-- Fixed routes selector -->
-            <div>
-              <select id="routeInput" aria-label="Choose a fixed route or choose 'Custom'">
+            <div class="form-group">
+              <label for="routeSelect">Fixed Routes</label>
+              <select id="routeSelect" class="form-select" aria-label="Choose a fixed route (optional)">
                 <option value="">Custom / Other...</option>
                 <option value="LAUREL - TANAUAN">LAUREL - TANAUAN</option>
                 <option value="TANAUAN - LAUREL">TANAUAN - LAUREL</option>
               </select>
+
+              <label for="routeInput" class="mt-2">Or enter custom route name</label>
+              <input id="routeInput" type="text" class="form-control" placeholder="e.g. LAUREL ⇄ MARKET" aria-label="Custom route name" />
+            </div>
+          </div>
+
+          <div class="btn-space">
+            <button class="btn btn-primary" id="startBtn" type="button">Start Tracking</button>
+            <button class="btn btn-outline-secondary" id="prefillBtn" type="button">Refresh Buses</button>
+          </div>
+        </section>
+
+        <!-- Tracking (hidden initially) -->
+        <section id="trackingSection" style="display:none" aria-labelledby="trackingTitle">
+          <div class="status-indicator status-active" id="trackingStatus">✅ Location tracking is inactive</div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="statusSelect">Bus Status</label>
+              <select id="statusSelect" class="form-select" aria-label="Bus status">
+                <option value="available">Available</option>
+                <option value="on_stop">On Stop</option>
+                <option value="full">Full</option>
+                <option value="unavailable">Unavailable</option>
+              </select>
             </div>
 
-            <small>Pick a fixed route above or enter a custom route name</small>
-          </div>
-        </div>
-
-        <div class="button-group">
-          <button class="btn btn-primary" onclick="startTracking()">Start Tracking</button>
-        </div>
-      </div>
-
-      <div id="trackingSection">
-        <div class="status-indicator status-active">✅ Location tracking is active</div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="statusSelect">Bus Status</label>
-            <select id="statusSelect" onchange="updateStatus()">
-              <option value="available">Available</option>
-              <option value="on_stop">On Stop</option>
-              <option value="full">Full</option>
-              <option value="unavailable">Unavailable</option>
-            </select>
-          </div>
-
-          <div class="form-group" aria-label="Seats available control">
-            <label>Seats Available</label>
-
-            <!-- Seat control (plus/minus with centered number) -->
-            <div class="seat-control" role="group" aria-label="Seats control">
-              <button type="button" id="seatMinus" class="seat-btn" aria-label="Decrease seats">−</button>
-              <div id="seatsCount" class="seat-count" role="status" aria-live="polite">25</div>
-              <button type="button" id="seatPlus" class="seat-btn" aria-label="Increase seats">+</button>
+            <div class="form-group">
+              <label>Seats Available</label>
+              <div class="seat-control" role="group" aria-label="Seats control">
+                <button type="button" id="seatMinus" class="seat-btn" aria-label="Decrease seats">−</button>
+                <div id="seatsCount" class="seat-count" role="status" aria-live="polite">25</div>
+                <button type="button" id="seatPlus" class="seat-btn" aria-label="Increase seats">+</button>
+              </div>
+              <input id="seatsInput" type="number" class="visually-hidden" min="0" max="999" value="25" />
             </div>
-
-            <!-- hidden input kept for compatibility with code that expects an element -->
-            <input id="seatsInput" type="number" class="visually-hidden" min="0" max="100" value="25" />
           </div>
-        </div>
 
-        <!-- Mini map for conductor to preview own location -->
-        <div id="miniMapWrap" aria-label="Your current location preview">
-          <div id="miniMap"></div>
-        </div>
+          <div id="miniMapWrap" aria-label="Your current location preview">
+            <div id="miniMap" role="img" aria-label="Mini map showing your location"></div>
+          </div>
 
-        <div class="info-box">
-          <h3>Current Location Info</h3>
-          <div class="info-item"><strong>Bus Code:</strong><span id="currentBusCode">-</span></div>
-          <div class="info-item"><strong>Route:</strong><span id="currentRoute">-</span></div>
-          <div class="info-item"><strong>Current Location:</strong><span id="currentLocation">-</span></div>
-          <div class="info-item"><strong>Last Update:</strong><span id="lastUpdate">-</span></div>
-        </div>
+          <div class="info-box" aria-live="polite">
+            <div class="info-item"><div>Bus Code</div><div id="currentBusCode">-</div></div>
+            <div class="info-item"><div>Route</div><div id="currentRoute">-</div></div>
+            <div class="info-item"><div>Current Location</div><div id="currentLocation">-</div></div>
+            <div class="info-item"><div>Last Update</div><div id="lastUpdate">-</div></div>
+          </div>
 
-        <div class="button-group" style="margin-top:1rem">
-          <button class="btn btn-danger" onclick="stopTracking()">Stop Tracking</button>
-        </div>
+          <div class="btn-space mt-3">
+            <button class="btn btn-danger" id="stopBtn" type="button">Stop Tracking</button>
+            <button class="btn btn-outline-secondary" id="sendNowBtn" type="button">Send Location Now</button>
+          </div>
+        </section>
       </div>
-    </div>
+    </article>
   </div>
 
   <!-- Leaflet JS for mini map -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Bootstrap JS bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    // Conductor client script - calculates human name from route polygons and sends GeoJSON
+    // Conductor client script (Bootstrap + Leaflet friendly)
     let trackingInterval = null;
     let currentBus = null;
     let currentPosition = null;
     let routeFeatures = [];
 
-    // Leaflet mini map state
+    // Mini map state
     let miniMap = null;
     let miniMarker = null;
     let miniMapHasCentered = false;
 
-    // load polygons/features (routes) from /map_data.php to use for point-in-polygon
+    // Cached DOM nodes
+    const el = (id) => document.getElementById(id);
+    const alertBox = el('alertBox');
+
+    // Load route polygons/features for point-in-polygon name resolution
     async function loadRouteFeatures() {
       try {
-        const res = await fetch('/map_data.php');
+        const res = await fetch('/map_data.php', { cache: 'no-store' });
         const json = await res.json();
         if (json && Array.isArray(json.features)) {
           routeFeatures = json.features.filter(f => f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon'));
@@ -236,7 +205,7 @@
       return keys.length ? keys[0] : null;
     }
 
-    // point-in-polygon helpers (rings are arrays of [lng, lat])
+    // Ray-casting algorithm for point-in-polygon
     function pointInRing(x, y, ring) {
       let inside = false;
       for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -256,7 +225,7 @@
         if (!rings || rings.length === 0) return false;
         if (!pointInRing(lng, lat, rings[0])) return false;
         for (let i = 1; i < rings.length; i++) {
-          if (pointInRing(lng, lat, rings[i])) return false; // inside hole -> not in polygon
+          if (pointInRing(lng, lat, rings[i])) return false; // inside hole -> outside
         }
         return true;
       } else if (g.type === 'MultiPolygon') {
@@ -285,36 +254,38 @@
       return null;
     }
 
-    // load buses into select
+    // Load available buses into the select dropdown
     async function loadBuses() {
       try {
-        const r = await fetch('/api.php?action=get_buses');
+        const r = await fetch('/api.php?action=get_buses', { cache: 'no-store' });
         const json = await r.json();
         if (json && Array.isArray(json.buses)) {
-          const sel = document.getElementById('busSelect');
-          sel.querySelectorAll('option:not([value=""])').forEach(o => o.remove());
+          const sel = el('busSelect');
+          // remove existing options except the placeholder
+          [...sel.options].forEach(o => { if (o.value !== '') o.remove(); });
           json.buses.forEach(b => {
             const o = document.createElement('option');
             o.value = b.id;
-            o.textContent = `${b.code} (${b.seats_total} seats)`;
-            o.dataset.code = b.code;
-            o.dataset.route = b.route || '';
+            o.textContent = `${b.code} (${b.seats_total ?? 'N/A'} seats)`;
+            o.dataset.code = b.code ?? `BUS-${b.id}`;
+            o.dataset.route = b.route ?? '';
             sel.appendChild(o);
           });
         }
       } catch (e) {
         console.error('loadBuses error', e);
+        showAlert('Unable to load buses', 'warning');
       }
     }
 
-    // Initialize mini map (called when tracking starts)
+    // Initialize mini map
     function initMiniMap() {
       if (miniMap) return;
       try {
-        miniMap = L.map('miniMap', { attributionControl: false, zoomControl: false }).setView([14.5995,120.9842], 13);
+        miniMap = L.map('miniMap', { attributionControl: false, zoomControl: false }).setView([14.5995, 120.9842], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(miniMap);
       } catch (e) {
-        console.warn('Leaflet may not be available', e);
+        console.warn('Leaflet init failed', e);
       }
     }
 
@@ -330,61 +301,85 @@
         miniMap.setView(latlng, 15);
         miniMapHasCentered = true;
       }
+      // small ensure render on some mobile devices
+      setTimeout(() => miniMap.invalidateSize(), 150);
     }
 
+    // Controls: seats
+    function getSeatsValue() {
+      return parseInt(el('seatsCount').textContent || '0', 10);
+    }
+    function setSeatsValue(v) {
+      const n = Math.max(0, Math.min(999, Number(v) || 0));
+      el('seatsCount').textContent = n;
+      el('seatsInput').value = n;
+    }
+
+    // Start tracking workflow
     async function startTracking() {
-      // ensure we have route polygons loaded (so we can resolve names)
-      await loadRouteFeatures();
+      await loadRouteFeatures(); // ensure polygons loaded
+      const busId = el('busSelect').value;
+      const fixed = el('routeSelect').value || '';
+      const custom = el('routeInput').value.trim();
+      const route = custom || fixed;
+      if (!busId) { showAlert('Please select a bus', 'danger'); return; }
+      if (!route) { showAlert('Please choose or enter a route', 'danger'); return; }
+      if (!navigator.geolocation) { showAlert('Geolocation not supported by this browser', 'danger'); return; }
 
-      const busId = document.getElementById('busSelect').value;
-      // take route from the text input (routeInput) which may be prefilled by fixed-route selection
-      const route = document.getElementById('routeInput').value.trim();
-      if (!busId) { showAlert('Please select a bus','error'); return; }
-      if (!route) { showAlert('Please enter a route name','error'); return; }
-      if (!navigator.geolocation) { showAlert('Geolocation not supported','error'); return; }
-
-      const sel = document.getElementById('busSelect');
+      const sel = el('busSelect');
       const selectedOption = sel.options[sel.selectedIndex];
 
       currentBus = { id: busId, code: selectedOption.dataset.code || ('BUS-' + busId), route };
 
-      document.getElementById('currentBusCode').textContent = currentBus.code;
-      document.getElementById('currentRoute').textContent = currentBus.route;
-      document.getElementById('setupSection').style.display = 'none';
-      document.getElementById('trackingSection').style.display = 'block';
+      el('currentBusCode').textContent = currentBus.code;
+      el('currentRoute').textContent = currentBus.route;
 
-      // initialize mini map and marker
+      el('setupSection').style.display = 'none';
+      el('trackingSection').style.display = 'block';
+      el('trackingStatus').textContent = '🔄 Location tracking is active';
+
       initMiniMap();
-
-      trackingInterval = setInterval(updateLocation, 3000);
+      // immediate send then interval
       updateLocation();
-      showAlert('Tracking started successfully!', 'success');
+      trackingInterval = setInterval(updateLocation, 3000);
+
+      showAlert('Tracking started', 'success');
     }
 
+    // Stop tracking workflow
     function stopTracking() {
       if (trackingInterval) { clearInterval(trackingInterval); trackingInterval = null; }
 
       if (currentBus && currentBus.id) {
         fetch('/api.php?action=stop_tracking', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ bus_id: currentBus.id })
         }).then(r=>r.json()).then(res => {
-          if (!res.success) showAlert('Failed to notify server when stopping tracking','error');
-          else showAlert('Stopped tracking and notified server.','success');
-        }).catch(err=>{ console.error(err); showAlert('Error notifying server when stopping tracking','error'); });
-      } else showAlert('Tracking stopped','success');
+          if (!res || !res.success) showAlert('Failed to notify server when stopping', 'warning');
+          else showAlert('Stopped tracking and notified server', 'success');
+        }).catch(err => {
+          console.error(err);
+          showAlert('Error notifying server when stopping', 'warning');
+        });
+      } else {
+        showAlert('Stopped tracking', 'info');
+      }
 
-      currentBus = null; currentPosition = null;
-      document.getElementById('setupSection').style.display = 'block';
-      document.getElementById('trackingSection').style.display = 'none';
-      document.getElementById('routeInput').value = '';
-      document.getElementById('routeSelect').value = '';
-      document.getElementById('currentBusCode').textContent = '-';
-      document.getElementById('currentRoute').textContent = '-';
-      document.getElementById('currentLocation').textContent = '-';
-      document.getElementById('lastUpdate').textContent = '-';
+      // reset UI
+      currentBus = null;
+      currentPosition = null;
+      el('setupSection').style.display = '';
+      el('trackingSection').style.display = 'none';
+      el('routeInput').value = '';
+      el('routeSelect').value = '';
+      el('currentBusCode').textContent = '-';
+      el('currentRoute').textContent = '-';
+      el('currentLocation').textContent = '-';
+      el('lastUpdate').textContent = '-';
+      el('trackingStatus').textContent = '✅ Location tracking is inactive';
 
-      // reset mini map marker
+      // remove mini marker
       if (miniMarker && miniMap) {
         miniMap.removeLayer(miniMarker);
         miniMarker = null;
@@ -392,73 +387,34 @@
       }
     }
 
-    function getSeatsValue() {
-      const el = document.getElementById('seatsCount');
-      return parseInt(el.textContent || '0', 10);
-    }
-    function setSeatsValue(v) {
-      const clamped = Math.max(0, Math.min(999, parseInt(v || 0, 10)));
-      document.getElementById('seatsCount').textContent = clamped;
-      document.getElementById('seatsInput').value = clamped; // keep hidden input in sync
+    // Trigger a single immediate location send
+    function sendLocationNow() {
+      if (!currentBus) { showAlert('Start tracking first', 'warning'); return; }
+      updateLocation();
     }
 
-    // mount seat button handlers and route selection behavior
-    document.addEventListener('DOMContentLoaded', () => {
-      const plus = document.getElementById('seatPlus');
-      const minus = document.getElementById('seatMinus');
-      plus.addEventListener('click', () => { setSeatsValue(getSeatsValue() + 1); updateSeats(); });
-      minus.addEventListener('click', () => { setSeatsValue(getSeatsValue() - 1); updateSeats(); });
-
-      // keyboard accessibility: allow arrow up/down on seat-count
-      const seatsCountEl = document.getElementById('seatsCount');
-      seatsCountEl.tabIndex = 0;
-      seatsCountEl.addEventListener('keydown', (ev) => {
-        if (ev.key === 'ArrowUp') { setSeatsValue(getSeatsValue() + 1); updateSeats(); ev.preventDefault(); }
-        if (ev.key === 'ArrowDown') { setSeatsValue(getSeatsValue() - 1); updateSeats(); ev.preventDefault(); }
-      });
-
-      // route select behavior: if a fixed route is chosen, populate and disable text input
-      const routeSelect = document.getElementById('routeSelect');
-      const routeInput = document.getElementById('routeInput');
-      routeSelect.addEventListener('change', () => {
-        const v = routeSelect.value || '';
-        if (v) {
-          routeInput.value = v;
-          routeInput.setAttribute('disabled', 'disabled');
-          // visually indicate selected fixed route (optional)
-          routeSelect.classList.add('has-fixed-route');
-        } else {
-          routeInput.removeAttribute('disabled');
-          routeInput.value = '';
-          routeInput.focus();
-          routeSelect.classList.remove('has-fixed-route');
-        }
-      });
-    });
-
+    // Main location update: reads geolocation, resolves friendly location, sends to server
     function updateLocation() {
+      if (!navigator.geolocation) { showAlert('Geolocation not available', 'danger'); return; }
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           currentPosition = { lat: pos.coords.latitude, lng: pos.coords.longitude };
 
-          // determine place name using polygons - returns null if no match
           const locationName = findLocationNameForPoint(currentPosition.lat, currentPosition.lng) || `${currentPosition.lat.toFixed(6)}, ${currentPosition.lng.toFixed(6)}`;
 
-          document.getElementById('currentLocation').textContent = locationName;
-          document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+          el('currentLocation').textContent = locationName;
+          el('lastUpdate').textContent = new Date().toLocaleTimeString();
 
           const seatsAvailable = getSeatsValue();
-          const status = document.getElementById('statusSelect').value;
+          const status = el('statusSelect').value;
 
-          // update mini map marker
           updateMiniMarker(currentPosition.lat, currentPosition.lng);
 
-          // Build GeoJSON feature and include both friendly-name fields for compatibility:
           const geojsonFeature = {
             type: "Feature",
             geometry: { type: "Point", coordinates: [ currentPosition.lng, currentPosition.lat ] },
             properties: {
-              bus_id: parseInt(currentBus.id),
+              bus_id: parseInt(currentBus.id, 10),
               code: currentBus.code,
               route: currentBus.route,
               seats_available: seatsAvailable,
@@ -475,41 +431,79 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ bus_id: currentBus.id, geojson: geojsonFeature, route: currentBus.route, seats_available: seatsAvailable, status })
           }).then(r => r.json()).then(res => {
-            if (!res.success) console.error('GeoJSON update error', res);
+            if (!res || !res.success) console.error('GeoJSON update error', res);
           }).catch(err => console.error('GeoJSON send error', err));
 
-          // Also update legacy API (api.php) which now accepts geojson
+          // Also update legacy API endpoint
           fetch('/api.php?action=update_location', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ bus_id: currentBus.id, geojson: geojsonFeature, route: currentBus.route, seats_available: seatsAvailable, status })
-          }).then(r=>r.json()).then(res => { if (!res.success) console.error('Legacy update failed', res); }).catch(err => console.error(err));
+          }).then(r => r.json()).then(res => {
+            if (!res || !res.success) console.error('Legacy update failed', res);
+          }).catch(err => console.error(err));
         },
-        (err) => { console.error('Geolocation error', err); showAlert('Unable to get location. Please check permissions.', 'error'); },
+        (err) => {
+          console.error('Geolocation error', err);
+          showAlert('Unable to get location. Check permissions.', 'danger');
+        },
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
       );
     }
 
-    function updateStatus() { if (currentBus) updateLocation(); }
-    function updateSeats() { if (currentBus) updateLocation(); }
-
-    function showAlert(msg, type='success') {
-      const box = document.getElementById('alertBox');
-      const cls = type === 'error' ? 'alert-error' : 'alert-success';
-      box.innerHTML = `<div class="${cls}" style="padding:.6rem;border-radius:6px">${msg}</div>`;
-      setTimeout(()=>box.innerHTML='',5000);
+    // UI interactions
+    function showAlert(message, type='info') {
+      // type: success, danger, warning, info
+      const bsType = (type === 'danger' || type === 'error') ? 'danger' : (type === 'success' ? 'success' : (type === 'warning' ? 'warning' : 'info'));
+      alertBox.innerHTML = `<div class="alert alert-${bsType} py-2 mb-0" role="alert">${message}</div>`;
+      setTimeout(()=> { if (alertBox) alertBox.innerHTML = ''; }, 4500);
     }
 
-    // bootstrap (init)
-    (async function init(){
-      await loadRouteFeatures();
-      await loadBuses();
-      // ensure initial seat value in hidden input is set
+    // Event wiring
+    document.addEventListener('DOMContentLoaded', () => {
+      // Buttons
+      el('startBtn').addEventListener('click', startTracking);
+      el('stopBtn').addEventListener('click', stopTracking);
+      el('sendNowBtn').addEventListener('click', sendLocationNow);
+      el('prefillBtn').addEventListener('click', () => { loadBuses().then(()=>showAlert('Bus list refreshed', 'success')); });
+
+      // Seats control
+      el('seatPlus').addEventListener('click', () => { setSeatsValue(getSeatsValue() + 1); if (currentBus) updateLocation(); });
+      el('seatMinus').addEventListener('click', () => { setSeatsValue(getSeatsValue() - 1); if (currentBus) updateLocation(); });
+
+      // Accessibility: arrow up/down for seat count
+      const seatsCountEl = el('seatsCount');
+      seatsCountEl.tabIndex = 0;
+      seatsCountEl.addEventListener('keydown', (ev) => {
+        if (ev.key === 'ArrowUp') { setSeatsValue(getSeatsValue() + 1); if (currentBus) updateLocation(); ev.preventDefault(); }
+        if (ev.key === 'ArrowDown') { setSeatsValue(getSeatsValue() - 1); if (currentBus) updateLocation(); ev.preventDefault(); }
+      });
+
+      // Route select behavior: pick fixed route -> populate text input and disable it
+      el('routeSelect').addEventListener('change', () => {
+        const v = el('routeSelect').value || '';
+        if (v) {
+          el('routeInput').value = v;
+          el('routeInput').setAttribute('disabled', 'disabled');
+        } else {
+          el('routeInput').removeAttribute('disabled');
+          el('routeInput').value = '';
+          el('routeInput').focus();
+        }
+      });
+
+      // Status change should trigger immediate update when tracking
+      el('statusSelect').addEventListener('change', () => { if (currentBus) updateLocation(); });
+
+      // Ensure map reflow on orientation/resizes
+      window.addEventListener('orientationchange', () => setTimeout(() => { if (miniMap) miniMap.invalidateSize(); }, 300));
+      window.addEventListener('resize', () => setTimeout(() => { if (miniMap) miniMap.invalidateSize(); }, 250));
+
+      // initial setup
       setSeatsValue(25);
-      // ensure route select/default state: custom enabled
-      document.getElementById('routeSelect').value = '';
-      document.getElementById('routeInput').removeAttribute('disabled');
-    })();
+      loadRouteFeatures().catch(()=>{});
+      loadBuses().catch(()=>{});
+    });
   </script>
 </body>
 </html>
